@@ -52,3 +52,72 @@ func (s UserService) FindUserByID(req models.RequestID) (models.UserModels, erro
 	}
 	return result, nil
 }
+
+func (s UserService) Login(req models.UserLoginRequest) (models.UserLoginResponse, error) {
+
+	user, err := s.service.UserRepo.Login(req.Email)
+	if err != nil {
+		log.Println("Error finding user by email: ", err)
+		return models.UserLoginResponse{}, errors.New("user not found")
+	}
+	isValidPassword, err := s.service.Generator.ComparePassword(user.Password, req.Password)
+	if !isValidPassword || err != nil {
+		log.Println("Error comparing password: ", err)
+		return models.UserLoginResponse{}, errors.New("invalid password")
+	}
+
+	accessToken, err := s.service.Generator.GenerateJWT(user.ID, user.Email, user.Role)
+	if err != nil {
+		log.Println("Error generating JWT: ", err)
+		return models.UserLoginResponse{}, errors.New("failed to generate access token")
+	}
+	refreshToken, err := s.service.Generator.GenerateRefreshToken(user.ID)
+	if err != nil {
+		log.Println("Error generating refresh token: ", err)
+		return models.UserLoginResponse{}, errors.New("failed to generate refresh token")
+	}
+
+	result := models.UserLoginResponse{
+		UserID:       user.ID,
+		Role:         user.Role,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	return result, nil
+}
+
+func (s UserService) RefreshToken(accessToken string) (models.UserLoginResponse, error) {
+
+	userID, err := s.service.Generator.ValidateRefreshToken(accessToken)
+	if err != nil {
+		log.Println("Error validating access token: ", err)
+		return models.UserLoginResponse{}, errors.New("invalid access token")
+	}
+
+	user, err := s.service.UserRepo.FindUserByID(userID)
+	if err != nil {
+		log.Println("Error finding user by ID: ", err)
+		return models.UserLoginResponse{}, errors.New("user not found")
+	}
+	
+	accessToken, err = s.service.Generator.GenerateJWT(user.ID, user.Email, user.Role)
+	if err != nil {
+		log.Println("Error generating JWT: ", err)
+		return models.UserLoginResponse{}, errors.New("failed to generate access token")
+	}
+	refreshToken, err := s.service.Generator.GenerateRefreshToken(user.ID)
+	if err != nil {
+		log.Println("Error generating refresh token: ", err)
+		return models.UserLoginResponse{}, errors.New("failed to generate refresh token")
+	}
+
+	result := models.UserLoginResponse{
+		UserID:       user.ID,
+		Role:         user.Role,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	return result, nil
+}

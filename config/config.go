@@ -8,19 +8,14 @@ import (
 )
 
 var (
-	DBDriver       = GetEnv("DB_DRIVER")
-	DBName         = GetEnv("DB_NAME")
-	DBHost         = GetEnv("DB_HOST")
-	DBPort         = GetEnv("DB_PORT")
-	DBUser         = GetEnv("DB_USER")
-	DBPass         = GetEnv("DB_PASS")
-	SSLMode        = GetEnv("SSL_MODE")
-	UploadAPIURL   = GetEnv("UPLOAD_API_URL")
-	UploadFolder   = GetEnv("UPLOAD_FOLDER")
-	UploadUsername = GetEnv("UPLOAD_USERNAME")
-	UploadPassword = GetEnv("UPLOAD_PASSWORD")
-	UpdateCashUrl  = GetEnv("UPDATE_CASH_URL")
-	UpdateCashAuth = GetEnv("UPDATE_CASH_AUTH")
+	DBDriver  = GetEnv("DB_DRIVER")
+	DBName    = GetEnv("DB_NAME")
+	DBHost    = GetEnv("DB_HOST")
+	DBPort    = GetEnv("DB_PORT")
+	DBUser    = GetEnv("DB_USER")
+	DBPass    = GetEnv("DB_PASS")
+	SSLMode   = GetEnv("SSL_MODE")
+	JWTSecret = GetEnv("JWT_SECRET")
 )
 
 func GetEnv(key string, value ...string) string {

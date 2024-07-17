@@ -60,3 +60,41 @@ func (h UserHandler) FindUserByID(ctx echo.Context) error {
 	result = helpers.ResponseJSON(true, constants.SUCCESS_CODE, constants.EMPTY_VALUE, user)
 	return ctx.JSON(http.StatusOK, result)
 }
+
+func (h UserHandler) Login(ctx echo.Context) error {
+	var result models.Response
+
+	req := new(models.UserLoginRequest)
+	if err := helpers.ValidateStruct(ctx, req); err != nil {
+		log.Printf("Error Failed to validate request: %v", err)
+		result = helpers.ResponseJSON(false, constants.VALIDATE_ERROR_CODE, err.Error(), nil)
+		return ctx.JSON(http.StatusBadRequest, result)
+	}
+
+	token, err := h.handler.UserService.Login(*req)
+	if err != nil {
+		log.Printf("Error Login: %v", err)
+		result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+		return ctx.JSON(http.StatusInternalServerError, result)
+	}
+	result = helpers.ResponseJSON(true, constants.SUCCESS_CODE, constants.EMPTY_VALUE, token)
+	return ctx.JSON(http.StatusOK, result)
+}
+
+func (h UserHandler) RefreshToken(ctx echo.Context) error {
+	var result models.Response
+	req := new(models.RefreshTokenRequest)
+	if err := helpers.ValidateStruct(ctx, req); err != nil {
+		log.Printf("Error Failed to validate request: %v", err)
+		result = helpers.ResponseJSON(false, constants.VALIDATE_ERROR_CODE, err.Error(), nil)
+		return ctx.JSON(http.StatusBadRequest, result)
+	}
+	token, err := h.handler.UserService.RefreshToken(req.RefreshToken)
+	if err != nil {
+		log.Printf("Error RefreshToken: %v", err)
+		result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+		return ctx.JSON(http.StatusInternalServerError, result)
+	}
+	result = helpers.ResponseJSON(true, constants.SUCCESS_CODE, constants.EMPTY_VALUE, token)
+	return ctx.JSON(http.StatusOK, result)
+}

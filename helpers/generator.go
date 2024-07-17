@@ -5,7 +5,10 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"go-auth/config"
+	"time"
 
+	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -15,6 +18,10 @@ type Generator struct {
 type GeneratorInterface interface {
 	GenerateHash(password string) (string, error)
 	ComparePassword(hash, password string) (bool, error)
+	GenerateJWT(userID int64, email, role string) (string, error)
+	ValidateToken(tokenString string) (*jwt.Token, error)
+	GenerateRefreshToken(userID int64) (string, error)
+	ValidateRefreshToken(tokenString string) (int64, error)
 }
 
 func NewGenerator() Generator {
@@ -62,4 +69,66 @@ func (g Generator) ComparePassword(hash, password string) (bool, error) {
 	}
 
 	return false, errors.New("password mismatch")
+}
+
+func (g Generator) GenerateJWT(userID int64, email, role string) (string, error) {
+	claims := jwt.MapClaims{
+		"user_id": userID,
+		"email":   email,
+		"role":    role,
+		"iat":     time.Now().Unix(),
+		"exp":     time.Now().Add(time.Hour * 72).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	accessToken, err := token.SignedString([]byte(config.JWTSecret))
+	if err != nil {
+		return "", err
+	}
+
+	return accessToken, nil
+}
+
+func (g Generator) ValidateToken(tokenString string) (*jwt.Token, error) {
+	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+		return []byte(config.JWTSecret), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return token, nil
+}
+
+func (g Generator) GenerateRefreshToken(userID int64) (string, error) {
+    claims := jwt.MapClaims{
+        "user_id": userID,
+        "exp":     time.Now().Add(time.Hour * 24 * 7).Unix(),
+    }
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+    tokenString, err := token.SignedString([]byte(config.JWTSecret))
+    if err != nil {
+        return "", err
+    }
+    return tokenString, nil
+}
+
+func (g Generator) ValidateRefreshToken(tokenString string) (int64, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(config.JWTSecret), nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		userID, ok := claims["user_id"].(float64)
+		if !ok {
+			return 0, errors.New("invalid user_id type")
+		}
+		return int64(userID), nil
+	} else {
+		return 0, errors.New("invalid refresh token")
+	}
 }

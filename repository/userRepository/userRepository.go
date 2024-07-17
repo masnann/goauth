@@ -56,3 +56,35 @@ func (r UserRepository) FindUserByID(id int64) (models.UserModels, error) {
 	}
 	return user, nil
 }
+
+func (r UserRepository) Login(email string) (models.UserModels, error) {
+	var user models.UserModels
+	query := `
+		SELECT 
+			id, 
+			username, 
+			email, 
+			password,
+			role 
+		FROM users 
+		WHERE email =?
+	`
+
+	query = helpers.ReplaceSQL(query, "?")
+
+	rows, err := r.repo.DB.Query(query, email)
+	if err != nil {
+		log.Println("Error querying: ", err)
+		return user, errors.New("error query")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Role)
+		if err != nil {
+			log.Println("Error scanning row: ", err)
+			return user, errors.New("error scanning row")
+		}
+	}
+
+	return user, nil
+}

@@ -5,7 +5,7 @@ type UserModels struct {
 	Username  string `json:"username"`
 	Email     string `json:"email"`
 	Password  string `json:"-"`
-	Role      string `json:"role"`
+	RoleID    int    `json:"roleID"`
 	Status    string `json:"status"`
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`
@@ -15,7 +15,7 @@ type UserRegisterRequest struct {
 	Username  string `json:"username"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
-	Role      string `json:"role"`
+	RoleID    int    `json:"roleID"`
 	Status    string `json:"status"`
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`
@@ -27,10 +27,18 @@ type UserLoginRequest struct {
 }
 
 type UserLoginResponse struct {
-	UserID       int64  `json:"userID"`
-	Role         string `json:"role"`
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
+	UserID       int64                  `json:"userID"`
+	RoleID       int                    `json:"roleID"`
+	AccessToken  string                 `json:"accessToken"`
+	RefreshToken string                 `json:"refreshToken"`
+	Permission   []UserPermissionModels `json:"permission"`
+}
+
+type UserPermissionModels struct {
+	ID     int64  `json:"id:"`
+	Group  string `json:"group"`
+	Name   string `json:"name"`
+	Status bool   `json:"status"`
 }
 
 type RefreshTokenRequest struct {

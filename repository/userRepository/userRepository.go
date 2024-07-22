@@ -21,14 +21,14 @@ func NewUserRepository(repo repository.Repository) UserRepository {
 func (r UserRepository) Register(req models.UserModels) (int64, error) {
 	var ID int64
 	query := `
-		INSERT INTO users (username, email, password, role, status, created_at, updated_at) 
+		INSERT INTO users (username, email, password, role_id, status, created_at, updated_at) 
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`
 
 	query = helpers.ReplaceSQL(query, "?")
-	err := r.repo.DB.QueryRow(query, req.Username, req.Email, req.Password, req.Role, req.Status, req.CreatedAt, req.UpdatedAt).Scan(&ID)
+	err := r.repo.DB.QueryRow(query, req.Username, req.Email, req.Password, req.RoleID, req.Status, req.CreatedAt, req.UpdatedAt).Scan(&ID)
 	if err != nil {
-		log.Println("Error querying: ", err)
+		log.Println("Error querying register: ", err)
 		return ID, errors.New("error query")
 	}
 
@@ -48,7 +48,7 @@ func (r UserRepository) FindUserByID(id int64) (models.UserModels, error) {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.RoleID, &user.Status, &user.CreatedAt, &user.UpdatedAt)
 		if err != nil {
 			log.Println("Error scanning row: ", err)
 			return user, errors.New("error scanning row")
@@ -65,7 +65,7 @@ func (r UserRepository) Login(email string) (models.UserModels, error) {
 			username, 
 			email, 
 			password,
-			role 
+			role_id
 		FROM users 
 		WHERE email =?
 	`
@@ -74,12 +74,12 @@ func (r UserRepository) Login(email string) (models.UserModels, error) {
 
 	rows, err := r.repo.DB.Query(query, email)
 	if err != nil {
-		log.Println("Error querying: ", err)
+		log.Println("Error querying login: ", err)
 		return user, errors.New("error query")
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Role)
+		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.RoleID)
 		if err != nil {
 			log.Println("Error scanning row: ", err)
 			return user, errors.New("error scanning row")
@@ -87,4 +87,41 @@ func (r UserRepository) Login(email string) (models.UserModels, error) {
 	}
 
 	return user, nil
+}
+
+func (r UserRepository) FindUserPermissions(userID int64) ([]models.UserPermissionModels, error) {
+	var permissions []models.UserPermissionModels
+	query := `
+		SELECT 
+			p.id, 
+			p.groups,
+			p.name,
+			rp.status
+		FROM 
+			permissions p
+		JOIN 
+			role_permissions rp ON p.id = rp.permission_id
+		JOIN 
+			users u ON rp.role_id = u.role_id
+		WHERE 
+			u.id = ?
+    `
+	query = helpers.ReplaceSQL(query, "?")
+
+	rows, err := r.repo.DB.Query(query, userID)
+	if err != nil {
+		log.Println("Error querying find user permission: ", err)
+		return permissions, errors.New("error query")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var permission models.UserPermissionModels
+		err := rows.Scan(&permission.ID, &permission.Group, &permission.Name, &permission.Status)
+		if err != nil {
+			log.Println("Error scanning row: ", err)
+			return permissions, errors.New("error scanning row")
+		}
+		permissions = append(permissions, permission)
+	}
+	return permissions, nil
 }

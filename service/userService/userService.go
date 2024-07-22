@@ -30,7 +30,7 @@ func (s UserService) Register(req models.UserRegisterRequest) (int64, error) {
 		Username:  req.Username,
 		Email:     req.Email,
 		Password:  hash,
-		Role:      "user",
+		RoleID:    2,
 		Status:    "",
 		CreatedAt: helpers.TimeStampNow(),
 		UpdatedAt: "",
@@ -60,28 +60,36 @@ func (s UserService) Login(req models.UserLoginRequest) (models.UserLoginRespons
 		log.Println("Error finding user by email: ", err)
 		return models.UserLoginResponse{}, errors.New("user not found")
 	}
+
 	isValidPassword, err := s.service.Generator.ComparePassword(user.Password, req.Password)
 	if !isValidPassword || err != nil {
 		log.Println("Error comparing password: ", err)
 		return models.UserLoginResponse{}, errors.New("invalid password")
 	}
 
-	accessToken, err := s.service.Generator.GenerateJWT(user.ID, user.Email, user.Role)
+	accessToken, err := s.service.Generator.GenerateJWT(user.ID, user.Email, user.RoleID)
 	if err != nil {
 		log.Println("Error generating JWT: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to generate access token")
 	}
+
 	refreshToken, err := s.service.Generator.GenerateRefreshToken(user.ID)
 	if err != nil {
 		log.Println("Error generating refresh token: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to generate refresh token")
 	}
 
+	permissions, err := s.service.UserRepo.FindUserPermissions(user.ID)
+	if err != nil {
+		log.Println("Error finding user permissions: ", err)
+		return models.UserLoginResponse{}, errors.New("failed to find user permissions")
+	}
 	result := models.UserLoginResponse{
 		UserID:       user.ID,
-		Role:         user.Role,
+		RoleID:       user.RoleID,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		Permission:   permissions,
 	}
 
 	return result, nil
@@ -100,8 +108,8 @@ func (s UserService) RefreshToken(accessToken string) (models.UserLoginResponse,
 		log.Println("Error finding user by ID: ", err)
 		return models.UserLoginResponse{}, errors.New("user not found")
 	}
-	
-	accessToken, err = s.service.Generator.GenerateJWT(user.ID, user.Email, user.Role)
+
+	accessToken, err = s.service.Generator.GenerateJWT(user.ID, user.Email, user.RoleID)
 	if err != nil {
 		log.Println("Error generating JWT: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to generate access token")
@@ -114,7 +122,7 @@ func (s UserService) RefreshToken(accessToken string) (models.UserLoginResponse,
 
 	result := models.UserLoginResponse{
 		UserID:       user.ID,
-		Role:         user.Role,
+		RoleID:       user.RoleID,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}

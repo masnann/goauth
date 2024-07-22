@@ -18,7 +18,7 @@ type Generator struct {
 type GeneratorInterface interface {
 	GenerateHash(password string) (string, error)
 	ComparePassword(hash, password string) (bool, error)
-	GenerateJWT(userID int64, email, role string) (string, error)
+	GenerateJWT(userID int64, email string, role int) (string, error)
 	ValidateToken(tokenString string) (*jwt.Token, error)
 	GenerateRefreshToken(userID int64) (string, error)
 	ValidateRefreshToken(tokenString string) (int64, error)
@@ -71,11 +71,11 @@ func (g Generator) ComparePassword(hash, password string) (bool, error) {
 	return false, errors.New("password mismatch")
 }
 
-func (g Generator) GenerateJWT(userID int64, email, role string) (string, error) {
+func (g Generator) GenerateJWT(userID int64, email string, roleID int) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userID,
 		"email":   email,
-		"role":    role,
+		"role":    roleID,
 		"iat":     time.Now().Unix(),
 		"exp":     time.Now().Add(time.Hour * 72).Unix(),
 	}
@@ -102,16 +102,16 @@ func (g Generator) ValidateToken(tokenString string) (*jwt.Token, error) {
 }
 
 func (g Generator) GenerateRefreshToken(userID int64) (string, error) {
-    claims := jwt.MapClaims{
-        "user_id": userID,
-        "exp":     time.Now().Add(time.Hour * 24 * 7).Unix(),
-    }
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    tokenString, err := token.SignedString([]byte(config.JWTSecret))
-    if err != nil {
-        return "", err
-    }
-    return tokenString, nil
+	claims := jwt.MapClaims{
+		"user_id": userID,
+		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(config.JWTSecret))
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
 }
 
 func (g Generator) ValidateRefreshToken(tokenString string) (int64, error) {

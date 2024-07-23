@@ -21,4 +21,6 @@ const (
 	TRUE_VALUE  = true
 	FALSE_VALUE = false
 	EMPTY_VALUE = ""
+
+	USER = "user"
 )

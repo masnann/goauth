@@ -3,8 +3,7 @@ package routes
 import (
 	"go-auth/handler"
 	userhandler "go-auth/handler/userHandler"
-	"go-auth/helpers"
-	"net/http"
+	"go-auth/helpers/middleware"
 
 	"github.com/labstack/echo/v4"
 )
@@ -20,11 +19,9 @@ func ApiRoutes(e *echo.Echo, handler handler.Handler) {
 	authGroup.POST("/token/refresh", userHandler.RefreshToken)
 
 	private := e.Group("/api/v1/private")
-	private.Use(helpers.JWTMiddleware)
+	private.Use(middleware.JWTMiddleware)
 
 	userGroup := private.Group("/user")
 	userGroup.POST("/findbyid", userHandler.FindUserByID)
-	userGroup.POST("/delete", func(c echo.Context) error {
-		return c.String(http.StatusNotImplemented, "Delete user functionality is not implemented yet.")
-	})
+	userGroup.POST("/delete", middleware.PermissionMiddleware(handler, "USER", "DELETE")(userHandler.DeleteUser))
 }

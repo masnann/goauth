@@ -30,7 +30,6 @@ func (s UserService) Register(req models.UserRegisterRequest) (int64, error) {
 		Username:  req.Username,
 		Email:     req.Email,
 		Password:  hash,
-		RoleID:    2,
 		Status:    "",
 		CreatedAt: helpers.TimeStampNow(),
 		UpdatedAt: "",
@@ -41,6 +40,18 @@ func (s UserService) Register(req models.UserRegisterRequest) (int64, error) {
 		log.Println("Error registering user: ", err)
 		return 0, errors.New("failed to register user")
 	}
+
+	// Assign Role
+	newRole := models.AssignRoleToUserRequest{
+		UserID: result,
+		RoleID: 3,
+	}
+
+	err = s.service.UserRepo.AssignRoleToUserRequest(newRole)
+	if err != nil {
+		return 0, err
+	}
+
 	return result, nil
 }
 
@@ -67,7 +78,13 @@ func (s UserService) Login(req models.UserLoginRequest) (models.UserLoginRespons
 		return models.UserLoginResponse{}, errors.New("invalid password")
 	}
 
-	accessToken, err := s.service.Generator.GenerateJWT(user.ID, user.Email, user.RoleID)
+	role, err := s.service.UserRepo.FindUserRole(user.ID)
+	if err != nil {
+		log.Println("Error finding user role: ", err)
+		return models.UserLoginResponse{}, errors.New("failed to find user role")
+	}
+
+	accessToken, err := s.service.Generator.GenerateJWT(user.ID, user.Email, role.RoleName)
 	if err != nil {
 		log.Println("Error generating JWT: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to generate access token")
@@ -79,14 +96,14 @@ func (s UserService) Login(req models.UserLoginRequest) (models.UserLoginRespons
 		return models.UserLoginResponse{}, errors.New("failed to generate refresh token")
 	}
 
-	permissions, err := s.service.UserRepo.FindUserPermissions(user.ID)
+	permissions, err := s.service.UserRepo.FindListUserPermissions(user.ID)
 	if err != nil {
 		log.Println("Error finding user permissions: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to find user permissions")
 	}
 	result := models.UserLoginResponse{
 		UserID:       user.ID,
-		RoleID:       user.RoleID,
+		RoleName:     role.RoleName,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		Permission:   permissions,
@@ -109,23 +126,56 @@ func (s UserService) RefreshToken(accessToken string) (models.UserLoginResponse,
 		return models.UserLoginResponse{}, errors.New("user not found")
 	}
 
-	accessToken, err = s.service.Generator.GenerateJWT(user.ID, user.Email, user.RoleID)
+	role, err := s.service.UserRepo.FindUserRole(user.ID)
+	if err != nil {
+		log.Println("Error finding user role: ", err)
+		return models.UserLoginResponse{}, errors.New("failed to find user role")
+	}
+
+	accessToken, err = s.service.Generator.GenerateJWT(user.ID, user.Email, role.RoleName)
 	if err != nil {
 		log.Println("Error generating JWT: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to generate access token")
 	}
+
 	refreshToken, err := s.service.Generator.GenerateRefreshToken(user.ID)
 	if err != nil {
 		log.Println("Error generating refresh token: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to generate refresh token")
 	}
 
+	permissions, err := s.service.UserRepo.FindListUserPermissions(user.ID)
+	if err != nil {
+		log.Println("Error finding user permissions: ", err)
+		return models.UserLoginResponse{}, errors.New("failed to find user permissions")
+	}
+
 	result := models.UserLoginResponse{
 		UserID:       user.ID,
-		RoleID:       user.RoleID,
+		RoleName:     role.RoleName,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		Permission:   permissions,
 	}
 
 	return result, nil
+}
+
+func (s UserService) FindListUserPermissions(userID int64) ([]models.UserPermissionModels, error) {
+	result, err := s.service.UserRepo.FindListUserPermissions(userID)
+	if err != nil {
+		log.Println("Error finding user permissions: ", err)
+		return nil, errors.New("failed to find user permissions")
+	}
+	return result, nil
+}
+
+func (s UserService) FindUserPermissions(userID int64, permissionGroup, permissionName string) (models.UserPermissionModels, error) {
+	result, err := s.service.UserRepo.FindUserPermissions(userID, permissionGroup, permissionName)
+	if err != nil {
+		log.Println("Error finding user permissions: ", err)
+		return result, errors.New("failed to find user permissions")
+	}
+	return result, nil
+
 }

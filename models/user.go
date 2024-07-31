@@ -25,11 +25,11 @@ type UserLoginRequest struct {
 }
 
 type UserLoginResponse struct {
-	UserID       int64                  `json:"userID"`
-	RoleName     string                 `json:"roleName"`
-	AccessToken  string                 `json:"accessToken"`
-	RefreshToken string                 `json:"refreshToken"`
-	Permission   []UserPermissionModels `json:"permission"`
+	UserID       int64                      `json:"userID"`
+	RoleName     string                     `json:"roleName"`
+	AccessToken  string                     `json:"accessToken"`
+	RefreshToken string                     `json:"refreshToken"`
+	Permission   []UserRolePermissionModels `json:"permission"`
 }
 
 type RefreshTokenRequest struct {
@@ -41,4 +41,10 @@ type FindUserRoleResponse struct {
 	Email    string `json:"email"`
 	RoleID   int    `json:"roleID"`
 	RoleName string `json:"roleName"`
+}
+
+type CurrentUserModels struct {
+	ID    int64  `json:"id"`
+	Role  string `json:"role"`
+	Email string `json:"email"`
 }

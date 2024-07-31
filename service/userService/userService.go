@@ -47,7 +47,7 @@ func (s UserService) Register(req models.UserRegisterRequest) (int64, error) {
 		RoleID: 3,
 	}
 
-	err = s.service.UserRepo.AssignRoleToUserRequest(newRole)
+	err = s.service.PermissionRepo.AssignRoleToUserRequest(newRole)
 	if err != nil {
 		return 0, err
 	}
@@ -78,7 +78,7 @@ func (s UserService) Login(req models.UserLoginRequest) (models.UserLoginRespons
 		return models.UserLoginResponse{}, errors.New("invalid password")
 	}
 
-	role, err := s.service.UserRepo.FindUserRole(user.ID)
+	role, err := s.service.PermissionRepo.FindUserRole(user.ID)
 	if err != nil {
 		log.Println("Error finding user role: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to find user role")
@@ -96,11 +96,12 @@ func (s UserService) Login(req models.UserLoginRequest) (models.UserLoginRespons
 		return models.UserLoginResponse{}, errors.New("failed to generate refresh token")
 	}
 
-	permissions, err := s.service.UserRepo.FindListUserPermissions(user.ID)
+	permissions, err := s.service.PermissionRepo.FindPermissionsForUser(user.ID)
 	if err != nil {
 		log.Println("Error finding user permissions: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to find user permissions")
 	}
+
 	result := models.UserLoginResponse{
 		UserID:       user.ID,
 		RoleName:     role.RoleName,
@@ -126,7 +127,7 @@ func (s UserService) RefreshToken(accessToken string) (models.UserLoginResponse,
 		return models.UserLoginResponse{}, errors.New("user not found")
 	}
 
-	role, err := s.service.UserRepo.FindUserRole(user.ID)
+	role, err := s.service.PermissionRepo.FindUserRole(user.ID)
 	if err != nil {
 		log.Println("Error finding user role: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to find user role")
@@ -144,7 +145,7 @@ func (s UserService) RefreshToken(accessToken string) (models.UserLoginResponse,
 		return models.UserLoginResponse{}, errors.New("failed to generate refresh token")
 	}
 
-	permissions, err := s.service.UserRepo.FindListUserPermissions(user.ID)
+	permissions, err := s.service.PermissionRepo.FindPermissionsForUser(user.ID)
 	if err != nil {
 		log.Println("Error finding user permissions: ", err)
 		return models.UserLoginResponse{}, errors.New("failed to find user permissions")
@@ -159,23 +160,4 @@ func (s UserService) RefreshToken(accessToken string) (models.UserLoginResponse,
 	}
 
 	return result, nil
-}
-
-func (s UserService) FindListUserPermissions(userID int64) ([]models.UserPermissionModels, error) {
-	result, err := s.service.UserRepo.FindListUserPermissions(userID)
-	if err != nil {
-		log.Println("Error finding user permissions: ", err)
-		return nil, errors.New("failed to find user permissions")
-	}
-	return result, nil
-}
-
-func (s UserService) FindUserPermissions(userID int64, permissionGroup, permissionName string) (models.UserPermissionModels, error) {
-	result, err := s.service.UserRepo.FindUserPermissions(userID, permissionGroup, permissionName)
-	if err != nil {
-		log.Println("Error finding user permissions: ", err)
-		return result, errors.New("failed to find user permissions")
-	}
-	return result, nil
-
 }

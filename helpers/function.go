@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"errors"
 	"fmt"
 	"go-auth/models"
 	"regexp"
@@ -80,4 +81,27 @@ func ValidateStruct(ctx echo.Context, s interface{}) error {
 		return fmt.Errorf("Validation error: %s", strings.Join(customErrors, "; "))
 	}
 	return nil
+}
+
+func ContainsStringInSlice(slice []string, str string) bool {
+	for _, item := range slice {
+		if item == str {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidateUserAndRole validates if the current user has one of the allowed roles
+func ValidateUserAndRole(ctx echo.Context, allowedRoles []string) (models.CurrentUserModels, error) {
+	currentUser, ok := ctx.Get("user").(models.CurrentUserModels)
+	if !ok {
+		return models.CurrentUserModels{}, errors.New("Failed to get user from context")
+	}
+
+	if !ContainsStringInSlice(allowedRoles, currentUser.Role) {
+		return models.CurrentUserModels{}, errors.New("Access denied. You don't have permission")
+	}
+
+	return currentUser, nil
 }

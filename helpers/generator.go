@@ -73,11 +73,11 @@ func (g Generator) ComparePassword(hash, password string) (bool, error) {
 
 func (g Generator) GenerateJWT(userID int64, email, role string) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": userID,
-		"email":   email,
-		"role":    role,
-		"iat":     time.Now().Unix(),
-		"exp":     time.Now().Add(time.Hour * 72).Unix(),
+		"userID": userID,
+		"email":  email,
+		"role":   role,
+		"iat":    time.Now().Unix(),
+		"exp":    time.Now().Add(time.Hour * 72).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -103,8 +103,8 @@ func (g Generator) ValidateToken(tokenString string) (*jwt.Token, error) {
 
 func (g Generator) GenerateRefreshToken(userID int64) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": userID,
-		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(),
+		"userID": userID,
+		"exp":    time.Now().Add(time.Hour * 24 * 7).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(config.JWTSecret))
@@ -123,7 +123,7 @@ func (g Generator) ValidateRefreshToken(tokenString string) (int64, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		userID, ok := claims["user_id"].(float64)
+		userID, ok := claims["userID"].(float64)
 		if !ok {
 			return 0, errors.New("invalid user_id type")
 		}

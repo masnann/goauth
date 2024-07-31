@@ -14,15 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// Role defines the user role
-type Role string
-
-const (
-	RoleUser  Role = "user"
-	RoleAdmin Role = "admin"
-)
-
-// JWTMiddleware validates the JWT token and sets the user role in the context
+// JWTMiddleware validates the JWT token and sets the user in the context
 func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var result models.Response
@@ -44,14 +36,20 @@ func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.JSON(http.StatusUnauthorized, result)
 		}
 
-		// Extract claims and set user role in the context
+		// Extract claims and create a User struct
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			userID := claims["user_id"].(float64)
-			c.Set("user_id", int64(userID))
+			userID := claims["userID"].(float64)
+			userRole := claims["role"].(string)
+			userEmail := claims["email"].(string)
 
-			userRole := Role(claims["role"].(string))
-			c.Set("role", userRole)
+			user := models.CurrentUserModels{
+				ID:    int64(userID),
+				Role:  userRole,
+				Email: userEmail,
+			}
 
+			// Set the user struct in the context
+			c.Set("user", user)
 		} else {
 			result = helpers.ResponseJSON(false, constants.UNAUTHORIZED_CODE, "Invalid token", nil)
 			return c.JSON(http.StatusUnauthorized, result)
@@ -61,55 +59,43 @@ func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-// AdminMiddleware restricts access to routes only for admin users
-func AdminMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+// Permission Middleware to check user permissions
+func PermissionMiddleware(handler handler.Handler, permissionGroup, permissionName string, next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var result models.Response
-		// Get the user role from the context
-		userRole, ok := c.Get("role").(Role)
-		if !ok || userRole != RoleAdmin {
-			result = helpers.ResponseJSON(false, constants.FORBIDDEN_CODE, "Access denied. You don't have permission", nil)
-			return c.JSON(http.StatusForbidden, result)
+		currentUser, ok := c.Get("user").(models.CurrentUserModels)
+		if !ok {
+			result = helpers.ResponseJSON(false, constants.UNAUTHORIZED_CODE, "Failed to get user from context", nil)
+			return c.JSON(http.StatusInternalServerError, result)
 		}
 
-		return next(c)
-	}
-}
-
-// UserMiddleware restricts access to routes only for regular users
-func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		var result models.Response
-		// Get the user role from the context
-		userRole, ok := c.Get("role").(Role)
-		if !ok || userRole != RoleUser {
-			result = helpers.ResponseJSON(false, constants.FORBIDDEN_CODE, "Access denied. You don't have permission", nil)
-			return c.JSON(http.StatusForbidden, result)
+		// Check user-specific permissions
+		userHavePermission, err := handler.PermissionService.IsUserHavePermission(currentUser.ID, permissionGroup, permissionName)
+		if err != nil {
+			log.Printf("Error checking user-specific permissions for user %d: %v", currentUser.ID, err)
+			result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+			return c.JSON(http.StatusInternalServerError, result)
 		}
 
-		return next(c)
-	}
-}
-
-func PermissionMiddleware(handler handler.Handler, permissionGroup, permissionName string) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			var result models.Response
-			userID := c.Get("user_id").(int64)
-
-			permission, err := handler.UserService.FindUserPermissions(userID, permissionGroup, permissionName)
-			if err != nil {
-				log.Printf("Error PermissionMiddleware: %v", err)
-				result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
-				return c.JSON(http.StatusInternalServerError, result)
-			}
-			if !permission.Status {
-				log.Printf("Permission status: %v", permission.Status)
-				result = helpers.ResponseJSON(false, constants.UNAUTHORIZED_CODE, "Access denied. You don't have permission", nil)
-				return c.JSON(http.StatusUnauthorized, result)
-			}
-
+		if userHavePermission {
 			return next(c)
 		}
+
+		// Check role permissions if no user-specific permission found
+		roleHavePermission, err := handler.PermissionService.IsRoleHavePermission(currentUser.ID, permissionGroup, permissionName)
+		if err != nil {
+			log.Printf("Error checking role permissions for user %d: %v", currentUser.ID, err)
+			result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+			return c.JSON(http.StatusInternalServerError, result)
+		}
+
+		if roleHavePermission {
+			return next(c)
+		}
+
+		// If no role permission found, return 403 Forbidden
+		log.Printf("Access denied for user %d. Permission Group: %s, Permission Name: %s", currentUser.ID, permissionGroup, permissionName)
+		result = helpers.ResponseJSON(false, constants.UNAUTHORIZED_CODE, "Access denied. You don't have permission", nil)
+		return c.JSON(http.StatusUnauthorized, result)
 	}
 }

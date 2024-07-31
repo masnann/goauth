@@ -2,6 +2,7 @@ package routes
 
 import (
 	"go-auth/handler"
+	permissionhandler "go-auth/handler/permissionHandler"
 	userhandler "go-auth/handler/userHandler"
 	"go-auth/helpers/middleware"
 
@@ -12,6 +13,7 @@ func ApiRoutes(e *echo.Echo, handler handler.Handler) {
 
 	public := e.Group("/api/v1/public")
 	userHandler := userhandler.NewUserHandler(handler)
+	permissionHandler := permissionhandler.NewPermissionHandler(handler)
 
 	authGroup := public.Group("/auth")
 	authGroup.POST("/register", userHandler.Register)
@@ -23,5 +25,11 @@ func ApiRoutes(e *echo.Echo, handler handler.Handler) {
 
 	userGroup := private.Group("/user")
 	userGroup.POST("/findbyid", userHandler.FindUserByID)
-	userGroup.POST("/delete", middleware.PermissionMiddleware(handler, "USER", "DELETE")(userHandler.DeleteUser))
+	userGroup.POST("/delete", middleware.PermissionMiddleware(handler, "USER", "DELETE", userHandler.DeleteUser))
+
+	permissionGroup := private.Group("/permission")
+	permissionGroup.POST("/create", middleware.PermissionMiddleware(handler, "PERMISSION", "CREATE", permissionHandler.CreatePermission))
+	permissionGroup.POST("/role/create", middleware.PermissionMiddleware(handler, "PERMISSION", "CREATE", permissionHandler.CreateRole))
+	permissionGroup.POST("/list", permissionHandler.FindListPermission)
+	permissionGroup.POST("/role/list", permissionHandler.FindListRole)
 }

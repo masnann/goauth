@@ -19,6 +19,8 @@ func ApiRoutes(e *echo.Echo, handler handler.Handler) {
 	authGroup.POST("/register", userHandler.Register)
 	authGroup.POST("/login", userHandler.Login)
 	authGroup.POST("/token/refresh", userHandler.RefreshToken)
+	authGroup.POST("/generate-otp", userHandler.GenerateOTP)
+	authGroup.POST("/validate-otp", userHandler.VerifyOTP)
 
 	private := e.Group("/api/v1/private")
 	private.Use(middleware.JWTMiddleware)

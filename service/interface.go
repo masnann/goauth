@@ -7,6 +7,8 @@ type UserServiceInterface interface {
 	FindUserByID(req models.RequestID) (models.UserModels, error)
 	Login(req models.UserLoginRequest) (models.UserLoginResponse, error)
 	RefreshToken(accessToken string) (models.UserLoginResponse, error)
+	GenerateOTP(req models.UserGenerateOTPRequest) (string, error)
+	ValidateOtp(req models.UserValidateOtpRequest) (bool, error)
 }
 
 type PermissionServiceInterface interface {

@@ -16,12 +16,13 @@ type Generator struct {
 }
 
 type GeneratorInterface interface {
-	GenerateHash(password string) (string, error)
-	ComparePassword(hash, password string) (bool, error)
+	GenerateHash(input string) (string, error)
+	CompareHash(hash, input string) (bool, error)
 	GenerateJWT(userID int64, email, role string) (string, error)
 	ValidateToken(tokenString string) (*jwt.Token, error)
 	GenerateRefreshToken(userID int64) (string, error)
 	ValidateRefreshToken(tokenString string) (int64, error)
+	GenerateOTP(length int) (string, error)
 }
 
 func NewGenerator() Generator {
@@ -36,20 +37,20 @@ const (
 	parallelism = 2
 )
 
-func (g Generator) GenerateHash(password string) (string, error) {
+func (g Generator) GenerateHash(input string) (string, error) {
 	salt := make([]byte, saltSize)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
 
-	hash := argon2.IDKey([]byte(password), salt, timeCost, memory, parallelism, keySize)
+	hash := argon2.IDKey([]byte(input), salt, timeCost, memory, parallelism, keySize)
 	saltAndHash := append(salt, hash...)
 	encodedSaltAndHash := base64.RawStdEncoding.EncodeToString(saltAndHash)
 
 	return encodedSaltAndHash, nil
 }
 
-func (g Generator) ComparePassword(hash, password string) (bool, error) {
+func (g Generator) CompareHash(hash, input string) (bool, error) {
 	decodedSaltAndHash, err := base64.RawStdEncoding.DecodeString(hash)
 	if err != nil {
 		return false, err
@@ -62,13 +63,13 @@ func (g Generator) ComparePassword(hash, password string) (bool, error) {
 	salt := decodedSaltAndHash[:saltSize]
 	existingHash := decodedSaltAndHash[saltSize:]
 
-	computedHash := argon2.IDKey([]byte(password), salt, timeCost, memory, parallelism, keySize)
+	computedHash := argon2.IDKey([]byte(input), salt, timeCost, memory, parallelism, keySize)
 
 	if subtle.ConstantTimeCompare(existingHash, computedHash) == 1 {
 		return true, nil
 	}
 
-	return false, errors.New("password mismatch")
+	return false, errors.New("input mismatch")
 }
 
 func (g Generator) GenerateJWT(userID int64, email, role string) (string, error) {
@@ -131,4 +132,40 @@ func (g Generator) ValidateRefreshToken(tokenString string) (int64, error) {
 	} else {
 		return 0, errors.New("invalid refresh token")
 	}
+}
+
+func (g Generator) GenerateOTP(length int) (string, error) {
+	otp := make([]byte, length)
+	_, err := rand.Read(otp)
+	if err != nil {
+		return "", err
+	}
+
+	for i := 0; i < length; i++ {
+		otp[i] = (otp[i] % 10) + '0'
+	}
+
+	return string(otp), nil
+}
+
+func (g Generator) CompareOTP(otpHash, otp string) (bool, error) {
+	decodedSaltAndHash, err := base64.RawStdEncoding.DecodeString(otpHash)
+	if err != nil {
+		return false, err
+	}
+
+	if len(decodedSaltAndHash) < saltSize {
+		return false, errors.New("invalid hash format")
+	}
+
+	salt := decodedSaltAndHash[:saltSize]
+	existingHash := decodedSaltAndHash[saltSize:]
+
+	computedHash := argon2.IDKey([]byte(otp), salt, timeCost, memory, parallelism, keySize)
+
+	if subtle.ConstantTimeCompare(existingHash, computedHash) == 1 {
+		return true, nil
+	}
+
+	return false, errors.New("otp mismatch")
 }

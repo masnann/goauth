@@ -106,3 +106,38 @@ func (h UserHandler) DeleteUser(ctx echo.Context) error {
 	result = helpers.ResponseJSON(true, constants.SUCCESS_CODE, constants.EMPTY_VALUE, response)
 	return ctx.JSON(http.StatusOK, result)
 }
+
+func (h UserHandler) GenerateOTP(ctx echo.Context) error {
+	var result models.Response
+
+	req := new(models.UserGenerateOTPRequest)
+	otp, err := h.handler.UserService.GenerateOTP(*req)
+	if err != nil {
+		log.Printf("Error GenerateOTP: %v", err)
+		result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+		return ctx.JSON(http.StatusInternalServerError, result)
+	}
+	result = helpers.ResponseJSON(true, constants.SUCCESS_CODE, constants.EMPTY_VALUE, otp)
+	return ctx.JSON(http.StatusOK, result)
+}
+
+
+func (h UserHandler) VerifyOTP(ctx echo.Context) error {
+	var result models.Response
+
+    req := new(models.UserValidateOtpRequest)
+    if err := helpers.ValidateStruct(ctx, req); err!= nil {
+        log.Printf("Error Failed to validate request: %v", err)
+        result = helpers.ResponseJSON(false, constants.VALIDATE_ERROR_CODE, err.Error(), nil)
+        return ctx.JSON(http.StatusBadRequest, result)
+    }
+
+    verified, err := h.handler.UserService.ValidateOtp(*req)
+    if err!= nil {
+        log.Printf("Error VerifyOTP: %v", err)
+        result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+        return ctx.JSON(http.StatusInternalServerError, result)
+    }
+    result = helpers.ResponseJSON(true, constants.SUCCESS_CODE, constants.EMPTY_VALUE, verified)
+	return ctx.JSON(http.StatusOK, result)
+}

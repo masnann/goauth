@@ -6,6 +6,7 @@ import (
 	"go-auth/models"
 	"go-auth/service"
 	"log"
+	"time"
 )
 
 type UserService struct {
@@ -72,7 +73,7 @@ func (s UserService) Login(req models.UserLoginRequest) (models.UserLoginRespons
 		return models.UserLoginResponse{}, errors.New("user not found")
 	}
 
-	isValidPassword, err := s.service.Generator.ComparePassword(user.Password, req.Password)
+	isValidPassword, err := s.service.Generator.CompareHash(user.Password, req.Password)
 	if !isValidPassword || err != nil {
 		log.Println("Error comparing password: ", err)
 		return models.UserLoginResponse{}, errors.New("invalid password")
@@ -160,4 +161,53 @@ func (s UserService) RefreshToken(accessToken string) (models.UserLoginResponse,
 	}
 
 	return result, nil
+}
+
+func (s UserService) GenerateOTP(req models.UserGenerateOTPRequest) (string, error) {
+	otp, err := s.service.Generator.GenerateOTP(6)
+	if err != nil {
+		log.Println("Error generating OTP: ", err)
+		return "", errors.New("failed to generate OTP")
+	}
+
+	// otpHash, err := s.service.Generator.GenerateHash(otp)
+	// if err != nil {
+	// 	log.Println("Error generating hash: ", err)
+	// 	return "", errors.New("failed to generate hash")
+	// }
+
+	newData := models.OTPModels{
+		UserID:    1,
+		OtpHash:   otp,
+		CreatedAt: helpers.TimeStampNow(),
+		ExpiresAt: time.Now().Add(1000 * time.Second),
+		IsUsed:    false,
+	}
+
+	err = s.service.UserRepo.SaveOtp(newData)
+	if err != nil {
+		log.Println("Error saving OTP: ", err)
+		return "", errors.New("failed to save OTP")
+	}
+
+	return otp, nil
+}
+
+func (s UserService) ValidateOtp(req models.UserValidateOtpRequest) (bool, error) {
+
+
+	otpStatus, err := s.service.UserRepo.CheckOtpStatus(1, req.OtpHash)
+	if err != nil {
+		log.Println("Error checking OTP status: ", err)
+		return false, errors.New("otp not found")
+	}
+
+	if otpStatus.IsUsed {
+		return false, errors.New("otp already used")
+	}
+	if time.Now().After(otpStatus.ExpiresAt) {
+		return false, errors.New("otp expired")
+	}
+
+	return true, nil
 }

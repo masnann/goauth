@@ -88,3 +88,54 @@ func (r UserRepository) Login(email string) (models.UserModels, error) {
 
 	return user, nil
 }
+
+func (r UserRepository) SaveOtp(req models.OTPModels) error {
+	query := `
+        INSERT INTO otp (user_id, otp_hash, created_at, expires_at, used_at, is_used) 
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (user_id) 
+        DO UPDATE SET
+            otp_hash = EXCLUDED.otp_hash,
+            created_at = EXCLUDED.created_at,
+            expires_at = EXCLUDED.expires_at,
+            used_at = EXCLUDED.used_at,
+            is_used = EXCLUDED.is_used
+    `
+    query = helpers.ReplaceSQL(query, "?")
+
+	_, err := r.repo.DB.Exec(query, req.UserID, req.OtpHash, req.CreatedAt, req.ExpiresAt, req.UsedAt, req.IsUsed)
+	if err != nil {
+		log.Println("Error querying save otp: ", err)
+		return errors.New("error query")
+	}
+
+	return nil
+}
+
+
+func (r UserRepository) CheckOtpStatus(userID int64, otpHash string) (models.OTPModels, error) {
+	var otp models.OTPModels
+	query := `
+        SELECT user_id, otp_hash, created_at, expires_at, used_at, is_used
+        FROM otp
+        WHERE user_id = ? AND otp_hash = ?
+        LIMIT 1
+    `
+	query = helpers.ReplaceSQL(query, "?")
+
+	err := r.repo.DB.QueryRow(query, userID, otpHash).Scan(
+		&otp.UserID,
+		&otp.OtpHash,
+		&otp.CreatedAt,
+		&otp.ExpiresAt,
+		&otp.UsedAt,
+		&otp.IsUsed,
+	)
+
+	if err != nil {
+		log.Println("Error querying check otp status: ", err)
+		return otp, errors.New("error query")
+	}
+
+	return otp, nil
+}

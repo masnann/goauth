@@ -6,6 +6,8 @@ type UserRepositoryInterface interface {
 	Register(req models.UserModels) (int64, error)
 	FindUserByID(id int64) (models.UserModels, error)
 	Login(email string) (models.UserModels, error)
+	SaveOtp(req models.OTPModels) error
+	CheckOtpStatus(userID int64, otpHash string) (models.OTPModels, error)
 }
 
 type PermissionRepositoryInterface interface {

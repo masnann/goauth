@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"go-auth/app"
 	"go-auth/config"
@@ -22,8 +23,10 @@ func main() {
 
 	DB := config.DBConnection()
 
+	mongo := config.ConnectMongo(context.Background())
+
 	//Initialize repository and service
-	repo := repository.NewRepository(DB)
+	repo := repository.NewRepository(DB, mongo)
 	handler := app.SetupApp(repo)
 
 	e := echo.New()

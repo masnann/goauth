@@ -21,7 +21,7 @@ func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		// Extract the JWT token from the request header
 		authHeader := c.Request().Header.Get("Authorization")
 		if authHeader == "" {
-			result = helpers.ResponseJSON(false, constants.VALIDATE_ERROR_CODE, "Missing authorization header", nil)
+			result = helpers.ResponseJSON(false, constants.VALIDATION_ERROR_CODE, "Missing authorization header", nil)
 			return c.JSON(http.StatusBadRequest, result)
 		}
 
@@ -73,7 +73,7 @@ func PermissionMiddleware(handler handler.Handler, permissionGroup, permissionNa
 		userHavePermission, err := handler.PermissionService.IsUserHavePermission(currentUser.ID, permissionGroup, permissionName)
 		if err != nil {
 			log.Printf("Error checking user-specific permissions for user %d: %v", currentUser.ID, err)
-			result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+			result = helpers.ResponseJSON(false, constants.INTERNAL_SERVER_ERROR, err.Error(), nil)
 			return c.JSON(http.StatusInternalServerError, result)
 		}
 
@@ -85,7 +85,7 @@ func PermissionMiddleware(handler handler.Handler, permissionGroup, permissionNa
 		roleHavePermission, err := handler.PermissionService.IsRoleHavePermission(currentUser.ID, permissionGroup, permissionName)
 		if err != nil {
 			log.Printf("Error checking role permissions for user %d: %v", currentUser.ID, err)
-			result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+			result = helpers.ResponseJSON(false, constants.INTERNAL_SERVER_ERROR, err.Error(), nil)
 			return c.JSON(http.StatusInternalServerError, result)
 		}
 

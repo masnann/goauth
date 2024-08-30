@@ -1,18 +1,27 @@
 package helpers
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"go-auth/config"
+	"go-auth/constants"
+	"go-auth/models"
+	"go-auth/repository"
+	"log"
+	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/argon2"
 )
 
 type Generator struct {
+	repo repository.Repository
 }
 
 type GeneratorInterface interface {
@@ -23,10 +32,15 @@ type GeneratorInterface interface {
 	GenerateRefreshToken(userID int64) (string, error)
 	ValidateRefreshToken(tokenString string) (int64, error)
 	GenerateOTP(length int) (string, error)
+	HandlerErr(ctx echo.Context, errorType, serviceName, userEmail, msg string, err error) error
 }
 
-func NewGenerator() Generator {
-	return Generator{}
+func NewGenerator(
+	repo repository.Repository,
+) Generator {
+	return Generator{
+		repo: repo,
+	}
 }
 
 const (
@@ -168,4 +182,78 @@ func (g Generator) CompareOTP(otpHash, otp string) (bool, error) {
 	}
 
 	return false, errors.New("otp mismatch")
+}
+func (g Generator) GenerateLogErrorHandler(errType, serviceName, userEmail string, err error) error {
+	collection := g.repo.MongoDB.Collection("errors")
+	_, insertErr := collection.InsertOne(context.Background(), map[string]interface{}{
+		"type":      errType,
+		"service":   serviceName,
+		"user":      userEmail,
+		"message":   err.Error(),
+		"timestamp": time.Now(),
+	})
+	if insertErr != nil {
+		return insertErr
+	}
+
+	return nil
+}
+
+func (g Generator) LogError(errType, msg string, err error) models.ResponseLogError {
+
+	var (
+		response      models.ResponseLogError
+		httpCode      int
+		statusCode    string
+		userMessage   string
+		systemMessage string
+	)
+
+	switch errType {
+	case "validation":
+		httpCode = http.StatusBadRequest
+		statusCode = constants.VALIDATION_ERROR_CODE
+		userMessage = err.Error()
+	case "database":
+		httpCode = http.StatusInternalServerError
+		statusCode = constants.DATABASE_ERROR_CODE
+		userMessage = msg
+	case "business":
+		httpCode = http.StatusConflict
+		statusCode = constants.BUSINESS_ERROR_CODE
+		userMessage = msg
+	default:
+		httpCode = http.StatusInternalServerError
+		statusCode = "unknown"
+		userMessage = msg
+	}
+
+	systemMessage = err.Error()
+
+	// Log the error with its details
+	log.Printf("Error [%d] %s: %v", httpCode, userMessage, err)
+
+	// Populate the response with error details
+	response = models.ResponseLogError{
+		HttpCode:      httpCode,
+		StatusCode:    statusCode,
+		UserMessage:   userMessage,
+		SystemMessage: systemMessage,
+	}
+
+	return response
+}
+
+func (g Generator) HandlerErr(ctx echo.Context, errorType, serviceName, userEmail, msg string, err error) error {
+	// Log the error and determine the response code/message
+	response := g.LogError(errorType, msg, err)
+
+	// Save the detailed error to MongoDB with additional information
+	if saveErr := g.GenerateLogErrorHandler(errorType, serviceName, userEmail, fmt.Errorf(response.SystemMessage)); saveErr != nil {
+		log.Printf("Failed to save error to MongoDB: %v", saveErr)
+	}
+
+	// Create the response with the user-friendly message
+	result := ResponseJSON(false, response.StatusCode, response.UserMessage, nil)
+	return ctx.JSON(response.HttpCode, result)
 }

@@ -3,7 +3,7 @@ package models
 import "time"
 
 type UserRegisterRequest struct {
-	Username  string `json:"username"`
+	Username  string `json:"username" validate:"required"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
 	Status    string `json:"status"`

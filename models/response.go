@@ -9,3 +9,10 @@ type Response struct {
 	Result           interface{} `json:"result"`
 	Message          string      `json:"message"`
 }
+
+type ResponseLogError struct {
+	HttpCode      int    `json:"httpCode"`
+	StatusCode    string `json:"errorCode"`
+	UserMessage   string `json:"userMessage"`
+	SystemMessage string `json:"systemMessage"`
+}

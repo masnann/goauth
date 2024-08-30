@@ -1,13 +1,19 @@
 package repository
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 type Repository struct {
-	DB *sql.DB
+	DB      *sql.DB
+	MongoDB *mongo.Database
 }
 
-func NewRepository(db *sql.DB) Repository {
+func NewRepository(db *sql.DB, MongoDB *mongo.Database) Repository {
 	return Repository{
-		DB: db,
+		DB:      db,
+		MongoDB: MongoDB,
 	}
 }

@@ -27,13 +27,13 @@ func (h PermissionHandler) CreateRole(ctx echo.Context) error {
 	req := new(models.RoleCreateRequest)
 	if err := helpers.ValidateStruct(ctx, req); err != nil {
 		log.Printf("Error Failed to validate request: %v", err)
-		result = helpers.ResponseJSON(false, constants.VALIDATE_ERROR_CODE, err.Error(), nil)
+		result = helpers.ResponseJSON(false, constants.VALIDATION_ERROR_CODE, err.Error(), nil)
 		return ctx.JSON(http.StatusBadRequest, result)
 	}
 	roleID, err := h.handler.PermissionService.CreateRole(*req)
 	if err != nil {
 		log.Printf("Error CreateRole: %v", err)
-		result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+		result = helpers.ResponseJSON(false, constants.INTERNAL_SERVER_ERROR, err.Error(), nil)
 		return ctx.JSON(http.StatusInternalServerError, result)
 	}
 	result = helpers.ResponseJSON(true, constants.SUCCESS_CODE, constants.EMPTY_VALUE, roleID)
@@ -46,13 +46,13 @@ func (h PermissionHandler) CreatePermission(ctx echo.Context) error {
 	req := new(models.PermissionCreateRequest)
 	if err := helpers.ValidateStruct(ctx, req); err != nil {
 		log.Printf("Error Failed to validate request: %v", err)
-		result = helpers.ResponseJSON(false, constants.VALIDATE_ERROR_CODE, err.Error(), nil)
+		result = helpers.ResponseJSON(false, constants.VALIDATION_ERROR_CODE, err.Error(), nil)
 		return ctx.JSON(http.StatusBadRequest, result)
 	}
 	permissionID, err := h.handler.PermissionService.CreatePermission(*req)
 	if err != nil {
 		log.Printf("Error CreatePermission: %v", err)
-		result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+		result = helpers.ResponseJSON(false, constants.INTERNAL_SERVER_ERROR, err.Error(), nil)
 		return ctx.JSON(http.StatusInternalServerError, result)
 	}
 	result = helpers.ResponseJSON(true, constants.SUCCESS_CODE, constants.EMPTY_VALUE, permissionID)
@@ -71,7 +71,7 @@ func (h PermissionHandler) FindListRole(ctx echo.Context) error {
 	roles, err := h.handler.PermissionService.FindListRole()
 	if err != nil {
 		log.Printf("Error FindListRole: %v", err)
-		result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+		result = helpers.ResponseJSON(false, constants.INTERNAL_SERVER_ERROR, err.Error(), nil)
 		return ctx.JSON(http.StatusInternalServerError, result)
 	}
 	result = helpers.ResponseJSON(true, constants.SUCCESS_CODE, constants.EMPTY_VALUE, roles)
@@ -90,7 +90,7 @@ func (h PermissionHandler) FindListPermission(ctx echo.Context) error {
 	permissions, err := h.handler.PermissionService.FindListPermission()
 	if err != nil {
 		log.Printf("Error FindListPermission: %v", err)
-		result = helpers.ResponseJSON(false, constants.SYSTEM_ERROR_CODE, err.Error(), nil)
+		result = helpers.ResponseJSON(false, constants.INTERNAL_SERVER_ERROR, err.Error(), nil)
 		return ctx.JSON(http.StatusInternalServerError, result)
 	}
 	result = helpers.ResponseJSON(true, constants.SUCCESS_CODE, constants.EMPTY_VALUE, permissions)

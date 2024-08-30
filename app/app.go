@@ -12,7 +12,7 @@ import (
 )
 
 func SetupApp(repo repository.Repository) handler.Handler {
-	generator := helpers.NewGenerator()
+	generator := helpers.NewGenerator(repo)
 	userRepo := userrepository.NewUserRepository(repo)
 	permissionRepo := permissionrepository.NewPermissionRepository(repo)
 
@@ -21,7 +21,7 @@ func SetupApp(repo repository.Repository) handler.Handler {
 	userService := userservice.NewUserService(service)
 	permissionService := permissionservice.NewPermissionService(service)
 
-	handler := handler.NewHandler(userService, permissionService)
+	handler := handler.NewHandler(userService, permissionService, generator)
 
 	return handler
 }

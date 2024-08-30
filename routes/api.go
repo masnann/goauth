@@ -26,7 +26,7 @@ func ApiRoutes(e *echo.Echo, handler handler.Handler) {
 	private.Use(middleware.JWTMiddleware)
 
 	userGroup := private.Group("/user")
-	userGroup.POST("/findbyid", userHandler.FindUserByID)
+	userGroup.POST("/findbyid", middleware.PermissionMiddleware(handler, "USER", "READ", userHandler.FindUserByID))
 	userGroup.POST("/delete", middleware.PermissionMiddleware(handler, "USER", "DELETE", userHandler.DeleteUser))
 
 	permissionGroup := private.Group("/permission")

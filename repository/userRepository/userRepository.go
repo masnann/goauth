@@ -23,14 +23,14 @@ func (r UserRepository) Register(req models.UserModels) (int64, error) {
 	var ID int64
 	query := `
 		INSERT INTO users (username, email, password, status, created_at, updated_at) 
-		VALUES (?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?)
 		RETURNING id`
 
 	query = helpers.ReplaceSQL(query, "?")
 	err := r.repo.DB.QueryRow(query, req.Username, req.Email, req.Password, req.Status, req.CreatedAt, req.UpdatedAt).Scan(&ID)
 	if err != nil {
 		log.Println("Error querying register: ", err)
-		return ID, errors.New("error query")
+		return ID, err
 	}
 
 	return ID, nil
@@ -101,7 +101,7 @@ func (r UserRepository) SaveOtp(req models.OTPModels) error {
             used_at = EXCLUDED.used_at,
             is_used = EXCLUDED.is_used
     `
-    query = helpers.ReplaceSQL(query, "?")
+	query = helpers.ReplaceSQL(query, "?")
 
 	_, err := r.repo.DB.Exec(query, req.UserID, req.OtpHash, req.CreatedAt, req.ExpiresAt, req.UsedAt, req.IsUsed)
 	if err != nil {
@@ -111,7 +111,6 @@ func (r UserRepository) SaveOtp(req models.OTPModels) error {
 
 	return nil
 }
-
 
 func (r UserRepository) CheckOtpStatus(userID int64, otpHash string) (models.OTPModels, error) {
 	var otp models.OTPModels

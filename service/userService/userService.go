@@ -3,6 +3,7 @@ package userservice
 import (
 	"errors"
 	"go-auth/helpers"
+	logerror "go-auth/helpers/logError"
 	"go-auth/models"
 	"go-auth/service"
 	"log"
@@ -24,7 +25,8 @@ func (s UserService) Register(req models.UserRegisterRequest) (int64, error) {
 	hash, err := s.service.Generator.GenerateHash(req.Password)
 	if err != nil {
 		log.Println("Error generating hash: ", err)
-		return 0, errors.New("failed to generate hash")
+		msg := "error generating hash"
+		return 0, logerror.NewBusinessError(msg, err)
 	}
 
 	newData := models.UserModels{
@@ -39,7 +41,8 @@ func (s UserService) Register(req models.UserRegisterRequest) (int64, error) {
 	result, err := s.service.UserRepo.Register(newData)
 	if err != nil {
 		log.Println("Error registering user: ", err)
-		return 0, errors.New("failed to register user")
+		msg := "failed to register user"
+		return 0, logerror.NewDatabaseError(msg, err)
 	}
 
 	// Assign Role
@@ -50,7 +53,8 @@ func (s UserService) Register(req models.UserRegisterRequest) (int64, error) {
 
 	err = s.service.PermissionRepo.AssignRoleToUserRequest(newRole)
 	if err != nil {
-		return 0, err
+		msg := "failed to assign role"
+		return 0, logerror.NewDatabaseError(msg, err)
 	}
 
 	return result, nil
@@ -59,51 +63,52 @@ func (s UserService) Register(req models.UserRegisterRequest) (int64, error) {
 func (s UserService) FindUserByID(req models.RequestID) (models.UserModels, error) {
 	result, err := s.service.UserRepo.FindUserByID(req.ID)
 	if err != nil {
-		log.Println("Error finding user by ID: ", err)
-		return result, errors.New("user not found")
+		msg := "user not found"
+		return result, logerror.NewDatabaseError(msg, err)
 	}
 	return result, nil
 }
 
 func (s UserService) Login(req models.UserLoginRequest) (models.UserLoginResponse, error) {
+	var result models.UserLoginResponse
 
 	user, err := s.service.UserRepo.Login(req.Email)
 	if err != nil {
 		log.Println("Error finding user by email: ", err)
-		return models.UserLoginResponse{}, errors.New("user not found")
+		return result, errors.New("user not found")
 	}
 
 	isValidPassword, err := s.service.Generator.CompareHash(user.Password, req.Password)
 	if !isValidPassword || err != nil {
 		log.Println("Error comparing password: ", err)
-		return models.UserLoginResponse{}, errors.New("invalid password")
+		return result, errors.New("invalid password")
 	}
 
 	role, err := s.service.PermissionRepo.FindUserRole(user.ID)
 	if err != nil {
 		log.Println("Error finding user role: ", err)
-		return models.UserLoginResponse{}, errors.New("failed to find user role")
+		return result, errors.New("failed to find user role")
 	}
 
 	accessToken, err := s.service.Generator.GenerateJWT(user.ID, user.Email, role.RoleName)
 	if err != nil {
 		log.Println("Error generating JWT: ", err)
-		return models.UserLoginResponse{}, errors.New("failed to generate access token")
+		return result, errors.New("failed to generate access token")
 	}
 
 	refreshToken, err := s.service.Generator.GenerateRefreshToken(user.ID)
 	if err != nil {
 		log.Println("Error generating refresh token: ", err)
-		return models.UserLoginResponse{}, errors.New("failed to generate refresh token")
+		return result, errors.New("failed to generate refresh token")
 	}
 
 	permissions, err := s.service.PermissionRepo.FindPermissionsForUser(user.ID)
 	if err != nil {
 		log.Println("Error finding user permissions: ", err)
-		return models.UserLoginResponse{}, errors.New("failed to find user permissions")
+		return result, errors.New("failed to find user permissions")
 	}
 
-	result := models.UserLoginResponse{
+	response := models.UserLoginResponse{
 		UserID:       user.ID,
 		RoleName:     role.RoleName,
 		AccessToken:  accessToken,
@@ -111,7 +116,7 @@ func (s UserService) Login(req models.UserLoginRequest) (models.UserLoginRespons
 		Permission:   permissions,
 	}
 
-	return result, nil
+	return response, nil
 }
 
 func (s UserService) RefreshToken(accessToken string) (models.UserLoginResponse, error) {
@@ -194,7 +199,6 @@ func (s UserService) GenerateOTP(req models.UserGenerateOTPRequest) (string, err
 }
 
 func (s UserService) ValidateOtp(req models.UserValidateOtpRequest) (bool, error) {
-
 
 	otpStatus, err := s.service.UserRepo.CheckOtpStatus(1, req.OtpHash)
 	if err != nil {
